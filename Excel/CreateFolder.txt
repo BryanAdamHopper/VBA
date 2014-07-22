@@ -1,0 +1,29 @@
+Private Sub btnCreate_Click()
+DirPath = "C:\"
+FolderName = txtFolderName.Value
+
+If (FolderName = "") Then
+    Output = MsgBox("Invalid folder name!", vbCritical, "Error")
+    Exit Sub
+End If
+
+For x = 1 To Len(FolderName)
+    strTest = Mid(FolderName, x, 1)
+    If strTest = "_" Then
+        Exit For
+    End If
+    If x = Len(FolderName) Then
+        Output = MsgBox("Invalid folder name!", vbCritical, "Error")
+        Exit Sub
+    End If
+    
+Next x
+
+On Error GoTo ErrorHandler1
+MkDir DirPath & FolderName
+Output = MsgBox("Folder created successfully!", vbInformation, "Success!")
+Exit Sub
+
+ErrorHandler1:
+Output = MsgBox("Folder name already exists!", vbCritical, "Error")
+End Sub

@@ -1,0 +1,36 @@
+Sub BackupGen()
+
+'NOTE: To call this function use: "Call BackupGen"
+
+'Get active worksheet name.
+ActiveWSNameOrig = ActiveSheet.Name 'Added due to var being altered but still needing the original name.
+ActiveWSName = ActiveSheet.Name
+
+'Create new worksheet as "BAK-<WorksheetName>-<TimeStamp>-<"RN">-<RandomNumber>".
+'Name cannot exceed 31 characters.
+
+WSNameLen = Len(ActiveWSName)
+WSNameDefaultLen = Len("BAKxxxxXX")
+MaxLen = (30 - WSNameDefaultLen)
+
+    'Check to see if current worksheet name needs to be truncated so new name does not exceed 31 characters.
+    If WSNameLen >= (MaxLen - 1) Then
+        ActiveWSName = Mid(ActiveWSName, 1, MaxLen)
+    End If
+
+Dim WS As Worksheet
+Set WS = Sheets.Add(after:=Sheets(Worksheets.Count))
+Time_Stamp = Format(Now(), "yyyy-MM-dd hh:mm:ss")
+Time_Stamp = Mid(Time_Stamp, 12, 2) + Mid(Time_Stamp, 15, 2) + CStr(Int(89 * Rnd) + 10)
+        LenTestTemp = Len("BAK" + ActiveWSName + Time_Stamp)
+WS.Name = "BAK" + ActiveWSName + Time_Stamp
+Sheets(ActiveWSNameOrig).Activate
+
+'Copy active worksheet to backup worksheet.
+ActiveSheet.Cells.Copy
+Worksheets(WS.Name).Select
+Cells.Select
+Selection.PasteSpecial Paste:=xlPasteAllExceptBorders, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+Sheets(ActiveWSNameOrig).Activate
+
+End Sub

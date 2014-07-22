@@ -1,0 +1,131 @@
+Sub allExcelSheetsBooks()
+'##################################################################################################
+'# Dimension variables
+
+ 	Dim blnReadOnly As Boolean, blnEXCEL As Boolean, blnHasFieldNames As Boolean
+ 	Dim lngCount As Long
+ 	Dim objExcel As Object, objWorkbook As Object
+ 	Dim colWorksheets As Collection
+ 	Dim strPathFile As String, strPassword As String
+ 	Dim tdf As TableDef
+ 	Dim s, OpenForms
+
+ 	Call SysCmd(acSysCmdClearStatus) 'Clear status message
+
+'##################################################################################################
+'# Establish an EXCEL application object
+
+        On Error Resume Next
+        Set objExcel = GetObject(, "Excel.Application")
+        
+        If Err.Number <> 0 Then
+            Set objExcel = CreateObject("Excel.Application")
+            blnEXCEL = True
+        End If
+        
+        Err.Clear
+        On Error GoTo 0
+
+'##################################################################################################
+'# Change this next line to True if the first row in EXCEL worksheet has field names
+
+        blnHasFieldNames = True
+
+'##################################################################################################
+'# Open file dialouge box to select excel file
+
+        Set myfile = Application.FileDialog(3)
+        
+        With myfile
+                .Title = "Choose File"
+                .AllowMultiSelect = False ' <--- Need to see if enabling works as intended.
+                If .Show <> -1 Then
+                    Exit Sub
+                End If
+            FileSelected = .SelectedItems(1)
+        End With
+        
+        strPathFile = FileSelected
+
+'##################################################################################################
+'# Replace passwordtext with the real password;
+'# if there is no password, replace it with vbNullString constant
+'# (e.g., strPassword = vbNullString)
+
+        strPassword = vbNullString
+        
+'##################################################################################################
+'# open EXCEL file in read-only mode
+
+        blnReadOnly = True
+
+'##################################################################################################
+'# Open the EXCEL file and read the worksheet names into a collection
+
+        Set colWorksheets = New Collection
+        Set objWorkbook = objExcel.Workbooks.Open(strPathFile, , blnReadOnly, , strPassword)
+        
+        For lngCount = 1 To objWorkbook.Worksheets.Count
+            OpenForms = DoEvents() 'Pass control to OS, allows status message to update on screen
+            s = SysCmd(acSysCmdSetStatus, "Step 1 of 2: Table " & lngCount & " of " & objWorkbook.Worksheets.Count) 'Update status message
+            colWorksheets.Add objWorkbook.Worksheets(lngCount).Name
+        Next lngCount
+        
+        Call SysCmd(acSysCmdClearStatus) 'Clear status message
+
+'##################################################################################################
+'# Close the EXCEL file without saving the file, and clean up the EXCEL objects
+
+        objWorkbook.Close False
+        Set objWorkbook = Nothing
+        If blnEXCEL = True Then objExcel.Quit
+        Set objExcel = Nothing
+
+'##################################################################################################
+'# Import the data from each worksheet into a separate table
+
+
+        For lngCount = 1 To colWorksheets.Count
+            OpenForms = DoEvents() 'Pass control to OS, allows status message to update on screen
+            s = SysCmd(acSysCmdSetStatus, "Step 2 of 2: Table " & lngCount & " of " & colWorksheets.Count) 'Update status message
+            DoCmd.TransferSpreadsheet _
+                    acImport, _
+                    acSpreadsheetTypeExcel9, _
+                    "tbl" & colWorksheets(lngCount), _
+                    strPathFile, _
+                    blnHasFieldNames, _
+                    colWorksheets(lngCount) & "$"
+        Next lngCount
+        
+        Call SysCmd(acSysCmdClearStatus) 'Clear status message
+
+'##################################################################################################
+'# Delete the collection
+
+        Set colWorksheets = Nothing
+
+'##################################################################################################
+'# Uncomment out the next code step if you want to delete the EXCEL file after it's been imported
+
+        ' Kill strPathFile
+        
+'##################################################################################################
+'# Rename imported tables to remove "tbl" from thier name
+           
+        'On Error Resume Next
+           
+        For Each tdf In CurrentDb.TableDefs
+            If Left(tdf.Name, 3) = "tbl" Then
+                DoCmd.Rename Right(tdf.Name, Len(tdf.Name) - 3), acTable, tdf.Name
+            End If
+        Next
+        
+End Sub
+
+
+
+
+
+
+
+

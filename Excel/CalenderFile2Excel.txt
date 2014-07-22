@@ -1,0 +1,422 @@
+
+Global InfoDataSheet As String
+    Global Info_Location As String
+    Global Info_FileName As String
+    Global Info_OffSet As String
+    Global Info_Source_DataCount As String
+    Global Info_Source_ApptCount As String
+    'Global Info_Source_ETA As String
+    Global Info_Output_DataCount As String
+    Global Info_Output_ApptCount As String
+    'Global Info_Output_ETA As String
+Global SourceDataSheet As String
+Global OutputDataSheet As String
+Global ListDataSheet As String
+
+'################################################################################################
+Sub DefineSheets()
+    InfoDataSheet = "Info"
+        Info_Location = "F5"
+        Info_FileName = "F6"
+        Info_OffSet = "F7"
+        Info_Source_DataCount = "G10"
+        Info_Source_ApptCount = "H10"
+        Info_Output_DataCount = "G11"
+        Info_Output_ApptCount = "H11"
+    SourceDataSheet = "Source"
+    OutputDataSheet = "Output"
+    ListDataSheet = "Lists_(hidden)"
+End Sub
+'#########################################################################################
+Sub clearSourceSheet()
+    Call DefineSheets
+    Worksheets(InfoDataSheet).Unprotect Password:=""
+    Application.StatusBar = False
+            Application.DisplayAlerts = False
+            On Error Resume Next
+            Worksheets(SourceDataSheet).Delete
+            Err.Clear
+            Application.DisplayAlerts = True
+    Worksheets(InfoDataSheet).Range(Info_Source_DataCount).Value = 0
+    Worksheets(InfoDataSheet).Range(Info_Source_ApptCount).Value = 0
+    Application.Calculation = xlAutomatic
+    
+    Worksheets(InfoDataSheet).EnableSelection = xlUnlockedCells
+    Worksheets(InfoDataSheet).Protect Password:=""
+End Sub
+'#########################################################################################
+Sub clearOutputSheet()
+    Call DefineSheets
+    
+    Worksheets(InfoDataSheet).Unprotect Password:=""
+    
+    Application.StatusBar = False
+            Application.DisplayAlerts = False
+            On Error Resume Next
+            Worksheets(OutputDataSheet).Delete
+            Err.Clear
+            Application.DisplayAlerts = True
+    Worksheets(InfoDataSheet).Range(Info_Output_DataCount).Value = 0
+    Worksheets(InfoDataSheet).Range(Info_Output_ApptCount).Value = 0
+    Application.Calculation = xlAutomatic
+    
+    Worksheets(InfoDataSheet).EnableSelection = xlUnlockedCells
+    Worksheets(InfoDataSheet).Protect Password:=""
+End Sub
+'#########################################################################################
+Sub OneCodeToConvertThemAll()
+
+    'Ensure Source tab exists
+    Application.DisplayAlerts = False
+    Q = 0
+    On Error GoTo ErrorHandler1
+    Worksheets(SourceDataSheet).Activate
+    Worksheets(InfoDataSheet).Activate
+    Q = 1
+    GoTo ErrorHandler0
+ErrorHandler1:
+    If Q = 0 Then
+        MsgBox ("No source data found!")
+        Application.DisplayAlerts = True
+        Exit Sub
+    End If
+ErrorHandler0:
+    Application.DisplayAlerts = True
+    Dim dataCount As Double
+    Dim dataCountTotal As Double
+    Dim pos1 As Double
+    Dim pos2 As Double
+    Dim colNum As Double
+    Dim colNumMax As Double
+    Dim x As Double
+    Dim y As Double
+    Dim z As Double
+    Dim cellString1 As String
+    Dim OutputArray(350000, 26) As String
+    Dim DTDATE As String
+    Dim DTTIME As String
+    Dim DTDATETIME As String
+    Dim NEWDTDATETIME As String
+    Dim HourOffset As String
+
+Call clearOutputSheet
+    Worksheets.Add.Name = OutputDataSheet
+    Worksheets(InfoDataSheet).Activate
+    Application.StatusBar = False
+    TimeStart = Now
+
+
+    dataCount = Application.WorksheetFunction.CountA(Worksheets(SourceDataSheet).Range("A:A"))
+    dataCountTotal = Application.WorksheetFunction.CountIf(Worksheets(SourceDataSheet).Range("A:A"), "BEGIN:VEVENT")
+    HourOffset = Application.WorksheetFunction.VLookup(Worksheets(InfoDataSheet).Range(Info_OffSet), Worksheets(ListDataSheet).Range("A:F"), 6, 0)
+    colNum = 0
+    colNumMax = 0
+    pos1 = 1
+    pos2 = 1
+
+'##### BEGIN GET DATA LOOP HERE #####
+ For x = 0 To (dataCountTotal - 1)
+    
+    DoEvents
+    Application.StatusBar = "Step 1 of 2 - Injecting Data: " & Format(x / dataCountTotal, "0%") _
+                            & " | Duration: " & DateDiff("s", TimeStart, Now) & " seconds"
+    
+    '##### FIND "BEGIN:VEVENT" #####
+    For pos1 = pos2 To dataCount
+        cellString1 = Worksheets(SourceDataSheet).Range("A" & pos1).Value
+        If cellString1 = "BEGIN:VEVENT" Then
+            'exit if next
+            pos1 = pos1 + 1
+            Exit For
+        Else
+            'do nothing, goto if next
+        End If
+    Next pos1
+
+    '##### FIND "END:VEVENT" #####
+    colNum = 0
+    OutputArray(x, colNum) = Worksheets(SourceDataSheet).Range("B" & pos2).Value
+    colNum = colNum + 1
+    OutputArray(x, colNum) = Worksheets(SourceDataSheet).Range("C" & pos2).Value
+    colNum = colNum + 1
+    
+    For pos2 = pos1 To dataCount
+        cellString1 = Worksheets(SourceDataSheet).Range("A" & pos2).Value
+        If cellString1 = "END:VEVENT" Then
+            colNum = colNum + 1
+            If colNum > colNumMax Then
+                colNumMax = colNum
+            End If
+            Exit For
+        Else
+            'store data, goto if next
+            OutputArray(x, colNum) = cellString1
+            colNum = colNum + 1
+            If colNum > colNumMax Then
+                colNumMax = colNum
+            End If
+        End If
+    Next pos2
+
+
+Next x
+'##### END GET DATA LOOP HERE #####
+
+
+'##### OUTPUT THE DATA #####
+
+'write headers to 1st row
+        Worksheets(OutputDataSheet).Range("A1").Value = "StartDate"
+        Worksheets(OutputDataSheet).Range("B1").Value = "StartTime"
+        Worksheets(OutputDataSheet).Range("C1").Value = "EndDate"
+        Worksheets(OutputDataSheet).Range("D1").Value = "EndTime"
+        Worksheets(OutputDataSheet).Range("E1").Value = "ClientName"
+        Worksheets(OutputDataSheet).Range("F1").Value = "TypeTaken"
+        Worksheets(OutputDataSheet).Range("G1").Value = "Status"
+        Worksheets(OutputDataSheet).Range("H1").Value = "TrainerName"
+        Worksheets(OutputDataSheet).Range("I1").Value = "Location"
+
+For y = 0 To (dataCountTotal - 1)
+
+    '########## Progress Bar ##########
+    DoEvents
+    Application.StatusBar = "Step 2 of 2 - Processing: " & Format(y / dataCountTotal, "0%") _
+                        & " | Duration: " & DateDiff("s", TimeStart, Now) & " seconds"
+
+     
+    For z = 0 To (colNumMax - 1)
+    
+        'Worksheets(OutputDataSheet).Range(colName(z) & y + 2).Value = OutputArray(y, z)
+        cellString1 = OutputArray(y, z)
+        
+            'If cellString1 = "" Then
+                'Do nothing
+                'Exit For
+                'MsgBox (colNumMax & " - out of bounds!")
+                
+            If z = 0 Then
+                'File name
+                TextToRemove = Worksheets(InfoDataSheet).Range("F6").Value
+                Worksheets(OutputDataSheet).Range("H" & y + 2).Value = _
+                            Application.WorksheetFunction.Substitute(cellString1, TextToRemove, "")
+                                
+            ElseIf z = 1 Then
+                'Location
+                Worksheets(OutputDataSheet).Range("I" & y + 2).Value = cellString1
+                
+            ElseIf InStr(1, cellString1, "DTSTART:") = 1 Then
+                'DTSTART:
+                DTDATE = Mid(cellString1, 13, 2) + "/" + Mid(cellString1, 15, 2) + "/" + Mid(cellString1, 9, 4)
+                DTTIME = Mid(cellString1, 18, 2) + ":" + Mid(cellString1, 20, 2) + ":" + Mid(cellString1, 22, 2)
+                
+                If HourOffset <> 0 Then
+                    DTDATETIME = DTDATE & " " & DTTIME
+                    NEWDTDATETIME = DateAdd("h", HourOffset, DTDATETIME)
+                    DTDATE = Month(NEWDTDATETIME) & "/" & Day(NEWDTDATETIME) & "/" & Year(NEWDTDATETIME)
+                    DTTIME = Hour(NEWDTDATETIME) & ":" & Minute(NEWDTDATETIME) & ":" & Second(NEWDTDATETIME)
+                End If
+                
+                Worksheets(OutputDataSheet).Range("A" & y + 2).Value = DTDATE
+                Worksheets(OutputDataSheet).Range("B" & y + 2).Value = DTTIME
+                                
+            ElseIf InStr(1, cellString1, "DTEND:") = 1 Then
+                'DTEND:
+                DTDATE = Mid(cellString1, 11, 2) + "/" + Mid(cellString1, 13, 2) + "/" + Mid(cellString1, 7, 4)
+                DTTIME = Mid(cellString1, 16, 2) + ":" + Mid(cellString1, 18, 2) + ":" + Mid(cellString1, 20, 2)
+                
+                If HourOffset <> 0 Then
+                    DTDATETIME = DTDATE & " " & DTTIME
+                    NEWDTDATETIME = DateAdd("h", HourOffset, DTDATETIME)
+                    DTDATE = Month(NEWDTDATETIME) & "/" & Day(NEWDTDATETIME) & "/" & Year(NEWDTDATETIME)
+                    DTTIME = Hour(NEWDTDATETIME) & ":" & Minute(NEWDTDATETIME) & ":" & Second(NEWDTDATETIME)
+                End If
+                
+                Worksheets(OutputDataSheet).Range("C" & y + 2).Value = DTDATE
+                Worksheets(OutputDataSheet).Range("D" & y + 2).Value = DTTIME
+                                               
+            ElseIf InStr(1, cellString1, "SUMMARY;") = 1 Then
+                'SUMMARY;
+                a = InStr(1, cellString1, ":")
+                b = InStr(a, cellString1, " - ")
+                c = InStr(b, cellString1, " (")
+                d = Len(cellString1)
+                    
+                Worksheets(OutputDataSheet).Range("E" & y + 2).Value = Mid(cellString1, a + 1, b - a - 1)
+                Worksheets(OutputDataSheet).Range("F" & y + 2).Value = Mid(cellString1, b + 3, c - b - 3)
+                Worksheets(OutputDataSheet).Range("G" & y + 2).Value = Mid(cellString1, c + 1, d - c)
+                                
+            ElseIf InStr(1, cellString1, "DESCRIPTION:") = 1 Then
+                'DESCRIPTION:
+                a = InStr(1, cellString1, ":")
+                b = InStr(1, cellString1, " - ")
+                c = InStr(1, cellString1, " (")
+                d = Len(cellString1)
+                    
+                Worksheets(OutputDataSheet).Range("E" & y + 2).Value = Mid(cellString1, a + 1, b - a - 1)
+                Worksheets(OutputDataSheet).Range("F" & y + 2).Value = Mid(cellString1, b + 3, c - b - 3)
+                Worksheets(OutputDataSheet).Range("G" & y + 2).Value = Mid(cellString1, c + 1, d - c)
+                                
+            Else
+                'output unknown to column J
+                Worksheets(OutputDataSheet).Range("J" & y + 2).Value = cellString1                
+            End If
+    Next z
+Next y
+
+If Application.WorksheetFunction.CountA(Worksheets(OutputDataSheet).Range("J:J")) > 1 Then
+    Worksheets(OutputDataSheet).Range("J1").Value = "OtherInfo"
+End If
+
+'######### Finilization ##############
+Worksheets(InfoDataSheet).Unprotect Password:=""
+Worksheets(InfoDataSheet).Range(Info_Output_DataCount).Value = dataCountTotal
+Worksheets(InfoDataSheet).Range(Info_Output_ApptCount).Value = dataCountTotal
+MsgBox ("Processing Complete! " & DateDiff("s", TimeStart, Now) & " seconds")
+Worksheets(OutputDataSheet).Activate
+Application.StatusBar = False
+Worksheets(OutputDataSheet).Columns("A:J").AutoFit
+Worksheets(InfoDataSheet).EnableSelection = xlUnlockedCells
+Worksheets(InfoDataSheet).Protect Password:=""
+End Sub
+
+'#########################################################################################
+Sub ImportFiles()
+
+Call DefineSheets
+Worksheets(InfoDataSheet).Unprotect Password:=""
+Application.StatusBar = False
+Application.ScreenUpdating = False
+Application.Calculation = xlManual
+
+Dim qry             As QueryTable
+Dim FilNams         As Variant
+Dim FilNamCntr      As Long
+Dim strQryName      As String
+Dim LastRow         As Long
+Dim ContainerWB     As Workbook
+Dim msgString       As String
+
+
+    FilNams = Application.GetOpenFilename(Title:="Select Textfile to Import", MultiSelect:=True)
+                                          
+    'Check to see if any files were selected
+    If TypeName(FilNams) = "Boolean" Then
+            MsgBox "No Files Selected. File Load Cancelled."
+            Exit Sub
+        Else
+	    'do nothing
+            'msgString = Join(FilNams, vbCr)
+            'MsgBox "FilNams is: " & msgString
+    End If
+    For FilNamCntr = LBound(FilNams) To UBound(FilNams)
+        FilNams(FilNamCntr) = "TEXT;" & FilNams(FilNamCntr)
+    Next FilNamCntr
+    
+    'msgString = Join(FilNams, vbCr)
+    'MsgBox "FilNams is: " & msgString
+    Application.DisplayAlerts = False
+    Q = 0
+    On Error GoTo ErrorHandler1
+    Worksheets(SourceDataSheet).Activate
+    Worksheets(InfoDataSheet).Activate
+    Q = 1
+    GoTo ErrorHandler0
+ErrorHandler1:
+    If Q = 0 Then
+        Worksheets.Add.Name = SourceDataSheet 'create worksheet
+        Application.DisplayAlerts = True
+    End If
+ErrorHandler0:
+    Application.DisplayAlerts = True
+        
+    
+    For FilNamCntr = LBound(FilNams) To UBound(FilNams)
+        With Worksheets(SourceDataSheet)
+            On Error GoTo ErrorCatch:
+            
+            'Append to previous data, if applicable
+            If .Range("A" & Rows.Count).End(xlUp).Row = 1 Then
+                    LastRow = 1
+                Else
+                    LastRow = .Range("A" & Rows.Count).End(xlUp).Row + 1
+            End If
+            
+            'MsgBox "LastRow value is:" & LastRow 'verification test
+            
+            Set qry = .QueryTables.Add(Connection:=FilNams(FilNamCntr), _
+                                    Destination:=.Range("A" & LastRow))
+            With qry
+                .Name = "Filename"
+                .FieldNames = False
+                .RowNumbers = False
+                .FillAdjacentFormulas = False
+                .PreserveFormatting = True
+                .RefreshOnFileOpen = False
+                .RefreshStyle = xlInsertDeleteCells
+                .SavePassword = False
+                .SaveData = True
+                .AdjustColumnWidth = False
+                .RefreshPeriod = 0
+                .TextFilePromptOnRefresh = False
+                .TextFilePlatform = xlWindows
+                .TextFileStartRow = 1
+                .TextFileParseType = xlFixedWidth
+                .TextFileTextQualifier = xlTextQualifierDoubleQuote
+                .TextFileConsecutiveDelimiter = False
+                .TextFileTabDelimiter = False
+                .TextFileSemicolonDelimiter = False
+                .TextFileCommaDelimiter = False
+                .TextFileSpaceDelimiter = False
+                '.TextFileColumnDataTypes = Array(1, 1, 1, 1, 1, 1, 1, 1, 1)
+                '.TextFileFixedColumnWidths = Array(14, 12, 11, 6, 6, 9, 7, 7)
+                .Refresh BackgroundQuery:=False
+            End With
+            
+            'Add filename to column B
+            FFNStr = FilNams(FilNamCntr)
+            FFNStrToFind = "\"
+            FFNLen = Len(FFNStr)
+            FFNLenSub = Len(Application.WorksheetFunction.Substitute(FFNStr, FFNStrToFind, ""))
+            FFNCnt = (FFNLen - FFNLenSub) / Len(FFNStrToFind)
+            FFNStrNew = Application.WorksheetFunction.Substitute(FFNStr, FFNStrToFind, "|", FFNCnt)
+            FFNPos = Application.WorksheetFunction.Find("|", FFNStrNew, 1)
+            FFNFileName = Mid(FFNStrNew, FFNPos + 1, FFNLen - FFNPos)
+                       
+            Worksheets(SourceDataSheet).Range("B" & LastRow).Value = FFNFileName 'File Name
+            'Range("C" & LastRow).Value = ExtTyp 'File Extension
+            Worksheets(SourceDataSheet).Range("C" & LastRow).Value = Sheets(InfoDataSheet).Range("F5").Value 'Location
+            
+            'Filldown
+            'dataCount = ActiveSheet.Range("$AF$1").Value
+            dataCount = Application.WorksheetFunction.CountA(Worksheets(SourceDataSheet).Range("A:A"))
+            Worksheets(SourceDataSheet).Activate
+            Worksheets(SourceDataSheet).Range("B" & LastRow & ":C" & LastRow).Select
+            Worksheets(SourceDataSheet).Range("B" & LastRow & ":C" & dataCount).FillDown
+            
+        End With
+    Next FilNamCntr
+    
+    'Focus back to Source A1
+    'Worksheets(SourceDataSheet).Activate
+    Worksheets(SourceDataSheet).Range("A1").Select
+    Worksheets(InfoDataSheet).Activate
+    
+    
+    Application.Calculation = xlAutomatic
+    Worksheets(InfoDataSheet).Range(Info_Source_DataCount).Value = dataCount
+    Worksheets(InfoDataSheet).Range(Info_Source_ApptCount).Value = _
+        Application.WorksheetFunction.CountIfs(Sheets(SourceDataSheet).Range("A:A"), "BEGIN:VEVENT")
+    
+    Worksheets(InfoDataSheet).EnableSelection = xlUnlockedCells
+    Worksheets(InfoDataSheet).Protect Password:=""
+Exit Sub
+
+
+ErrorCatch:
+Application.Calculation = xlAutomatic
+Worksheets(InfoDataSheet).Activate
+Worksheets(InfoDataSheet).EnableSelection = xlUnlockedCells
+Worksheets(InfoDataSheet).Protect Password:=""
+MsgBox "Unexpected Error. Type: " & Err.Description
+End Sub
+

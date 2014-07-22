@@ -1,0 +1,33 @@
+Function ValidateCCNumber(ccNum As String)
+
+	Dim ccIndexNum As Integer
+	Dim tempValue As Double
+	Dim x As Integer
+	Dim tempValue2 As Double
+
+	ccIndexNum = 15
+	tempValue = 0
+	tempValue2 = 0
+
+	For x = 1 to 8 Then
+		If Mid(ccNum, ccIndexNum, 1) * 2 > 9 Then
+    			tempValue = tempValue + (1 + ((Mid(ccNum, ccIndexNum, 1) * 2) Mod 10))
+		Else
+    			tempValue = tempValue + (Mid(ccNum, ccIndexNum, 1) * 2)
+		End If
+		ccIndexNum = ccIndexNum - 2
+	Next x
+
+
+	For x = 16 to 2 Step -2
+		tempValue2 = tempValue2 + CInt(Mid(ccNum, x, 1)) 
+	Next x
+
+
+	If (CInt(tempValue) + CInt(tempValue2)) Mod 10 = 0 Then
+    		ValidateCCNumber = 1
+	Else
+    		ValidateCCNumber = 0
+	End If
+
+End Function

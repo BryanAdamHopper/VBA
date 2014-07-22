@@ -1,0 +1,41 @@
+Sub Replace()
+
+Dim choiceVal As Integer
+Dim MsgBoxText As String
+
+    MsgBoxText = _
+                "Enter a value (1-4):" & Chr(13) & Chr(13) & _
+                "1 - Text to Char (X to 000)" & Chr(13) & _
+                "2 - Char to Text (000 to X)" & Chr(13) & _
+                "3 - Char to Char (000 to 000)" & Chr(13) & _
+                "4 - Text to Text (X to X)"
+    choiceVal = Application.InputBox(prompt:=MsgBoxText, Title:="Special Replace", Type:=1)
+     
+If choiceVal = 0 Then
+    Exit Sub
+    
+ElseIf choiceVal = 1 Then
+    Selection.Replace _
+        InputBox(prompt:="Text to replace", Title:="Old Text", Default:="X"), _
+        Chr(InputBox(prompt:="Replace text with this char", Title:="New Char Code", Default:="000"))
+        
+ElseIf choiceVal = 2 Then
+    Selection.Replace _
+        Chr(InputBox(prompt:="Char to replace", Title:="Old Char Code", Default:="000")), _
+        InputBox(prompt:="Replace char with this text", Title:="New Text", Default:="X")
+          
+ElseIf choiceVal = 3 Then
+    Selection.Replace _
+        Chr(InputBox(prompt:="Char to replace", Title:="Old Char Code", Default:="000")), _
+        Chr(InputBox(prompt:="Replace char with this char", Title:="New Char Code", Default:="000"))
+
+ElseIf choiceVal = 4 Then
+    Selection.Replace _
+        InputBox(prompt:="Text to replace", Title:="Old Text", Default:="000"), _
+        InputBox(prompt:="Replace text with this text", Title:="New Text", Default:="000")
+
+Else
+    MsgBox ("Not a valid option.")
+End If
+
+End Sub

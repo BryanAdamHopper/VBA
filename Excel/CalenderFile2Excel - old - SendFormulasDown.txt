@@ -1,0 +1,55 @@
+Sub FillDownFormula()
+
+'Application.ScreenUpdating = False
+'Application.Calculation = xlManual
+'Get data count from source_VCS
+dataCount = Application.WorksheetFunction.CountA(Worksheets("Source_VCS").Range("A:A"))
+'MsgBox (dataCount)
+'Send formulas down
+Sheets("Source_VCS").Activate
+ActiveSheet.Range("D2:K2").Select
+
+Dim x As Double, y As Double, z As Double
+y = 2
+z = Application.WorksheetFunction.RoundUp(dataCount, -5)
+
+
+For x = 100000 To z Step 100000
+    Worksheets("Source_VCS").Range("D" & y & ":K" & x).FillDown
+        If y = 2 Then
+            y = 100000
+        Else
+            y = y + 100000
+        End If
+    Application.StatusBar = "Processed " & Format(y / z, "0%")
+Next x
+
+Application.StatusBar = False
+'Application.Calculation = xlAutomatic
+'FillDownFormula2()
+
+End Sub
+
+'################################################################################################
+Sub FillDownFormula2()
+
+Application.ScreenUpdating = False
+Application.Calculation = xlManual
+
+'Get number of appointments
+'appCount = Worksheets("Source_VCS").Range("$AD$1").Value
+appCount = Application.WorksheetFunction.Max(Worksheets("Source_VCS").Range("M:M")) 'Subject to change
+'^--- Needs updating based on new structure.
+
+'Jump to output and send formulas down
+Sheets("Output").Activate
+ActiveSheet.Range("A2:K3").Select
+Worksheets("Output").Range("A2:K" & (appCount + 1)).FillDown
+
+'Select the output data
+Sheets("Output").Activate
+ActiveSheet.Range("B1:J" & (appCount + 1)).Select
+
+Application.Calculation = xlAutomatic
+
+End Sub
